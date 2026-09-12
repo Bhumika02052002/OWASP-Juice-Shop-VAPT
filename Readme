@@ -1,0 +1,1652 @@
+# 01 – Reconnaissance
+
+> **OWASP Juice Shop Web Application VAPT – Reconnaissance Phase**
+
+Reconnaissance is the first phase of this assessment. The objective is to understand the Juice Shop application's **technology stack, attack surface, routes, API endpoints, parameters, authentication boundaries, client-side assets, HTTP behavior, and exposed information** before performing vulnerability testing.
+
+The reconnaissance phase follows:
+
+```text
+Target Identification
+        ↓
+Technology Fingerprinting
+        ↓
+HTTP Enumeration
+        ↓
+Application Crawling
+        ↓
+Endpoint / API Discovery
+        ↓
+JavaScript Analysis
+        ↓
+Parameter Identification
+        ↓
+Authentication Mapping
+        ↓
+Attack-Surface Mapping
+        ↓
+Evidence Collection
+```
+
+---
+
+# 🎯 Objectives
+
+The objectives of this phase are:
+
+* Identify the target application.
+* Identify the target host and port.
+* Identify the application technology stack.
+* Identify frontend and backend technologies.
+* Identify HTTP methods.
+* Enumerate application routes.
+* Discover API endpoints.
+* Identify interesting parameters.
+* Identify authentication-related endpoints.
+* Identify cookies and session mechanisms.
+* Analyze JavaScript files.
+* Review `robots.txt`, sitemap and other public resources.
+* Identify exposed files and directories.
+* Identify interesting HTTP headers.
+* Build an attack-surface inventory.
+* Record evidence before exploitation.
+
+---
+
+# ⚠️ Scope & Authorization
+
+This assessment is performed against a **local/authorized OWASP Juice Shop laboratory environment**.
+
+Example target:
+
+```text
+http://127.0.0.1:3000
+```
+
+If Juice Shop is running on another host:
+
+```text
+http://<TARGET-IP>:3000
+```
+
+Replace `<TARGET-IP>` with the IP address of your authorized laboratory target.
+
+Do not execute these techniques against systems without explicit authorization.
+
+---
+
+# 🧪 Lab Setup
+
+## Start Juice Shop
+
+If Juice Shop is installed locally:
+
+```bash
+npm start
+```
+
+Or:
+
+```bash
+npm run serve
+```
+
+If using Docker:
+
+```bash
+docker run --rm -p 3000:3000 bkimminich/juice-shop
+```
+
+Verify:
+
+```bash
+curl -I http://127.0.0.1:3000
+```
+
+Expected result:
+
+```text
+HTTP/1.1 200 OK
+```
+
+Open:
+
+```text
+http://127.0.0.1:3000
+```
+
+---
+
+# 1. Target Identification
+
+Define the target before beginning testing.
+
+```bash
+TARGET="http://127.0.0.1:3000"
+```
+
+Check connectivity:
+
+```bash
+curl -I "$TARGET"
+```
+
+Check response:
+
+```bash
+curl -s "$TARGET" | head
+```
+
+Check HTTP status:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" "$TARGET"
+```
+
+Expected:
+
+```text
+200
+```
+
+---
+
+# 2. Host & Port Enumeration
+
+If the target is running on another authorized lab machine:
+
+```bash
+nmap -Pn <TARGET-IP>
+```
+
+Focused web-port scan:
+
+```bash
+nmap -Pn -p 80,443,3000,8000,8080,8443 <TARGET-IP>
+```
+
+Service/version detection:
+
+```bash
+nmap -Pn -sV -p 3000 <TARGET-IP>
+```
+
+More detailed enumeration:
+
+```bash
+nmap -Pn -sC -sV -p 3000 <TARGET-IP>
+```
+
+### Example
+
+```text
+PORT     STATE SERVICE VERSION
+3000/tcp open  http    Node.js Express
+```
+
+> Record only ports relevant to the authorized Juice Shop environment.
+
+---
+
+# 3. Technology Fingerprinting
+
+## WhatWeb
+
+Run:
+
+```bash
+whatweb "$TARGET"
+```
+
+Example:
+
+```bash
+whatweb http://127.0.0.1:3000
+```
+
+Look for:
+
+* Angular
+* Node.js
+* Express
+* JavaScript libraries
+* Web server information
+* Cookies
+* Framework indicators
+
+---
+
+## Nmap HTTP Enumeration
+
+```bash
+nmap -Pn -p 3000 --script http-title,http-headers,http-methods <TARGET-IP>
+```
+
+This can provide information about:
+
+* HTTP title
+* Headers
+* Supported methods
+
+---
+
+# 4. HTTP Response Analysis
+
+Inspect the complete response:
+
+```bash
+curl -i "$TARGET"
+```
+
+Inspect only headers:
+
+```bash
+curl -I "$TARGET"
+```
+
+Save headers:
+
+```bash
+curl -I "$TARGET" > evidence-http-headers.txt
+```
+
+Inspect server information:
+
+```bash
+curl -s -D - -o /dev/null "$TARGET"
+```
+
+Check supported HTTP methods:
+
+```bash
+curl -i -X OPTIONS "$TARGET"
+```
+
+Record:
+
+```text
+HTTP Version:
+Status Code:
+Server:
+Content-Type:
+Set-Cookie:
+CORS:
+CSP:
+HSTS:
+X-Content-Type-Options:
+X-Frame-Options:
+Referrer-Policy:
+```
+
+---
+
+# 5. Browser-Based Reconnaissance
+
+Open:
+
+```text
+http://127.0.0.1:3000
+```
+
+Open browser Developer Tools:
+
+```text
+F12
+```
+
+Important tabs:
+
+```text
+Elements
+Console
+Network
+Sources
+Application
+Security
+```
+
+---
+
+# 6. Application Mapping
+
+Before actively testing vulnerabilities, browse the application normally.
+
+Visit:
+
+```text
+/
+```
+
+Then identify:
+
+* Homepage
+* Login
+* Registration
+* Products
+* Search
+* Basket
+* Checkout
+* Orders
+* Customer feedback
+* Complaints
+* User profile
+* Administration-related functionality
+* Search functionality
+* File upload functionality
+* Reviews
+* Wallet/payment-related functionality
+
+Record discovered functionality in:
+
+```text
+Application Functionality
+```
+
+---
+
+# 7. Burp Suite Setup
+
+## Step 1 – Start Burp Suite
+
+Open:
+
+```text
+Burp Suite
+```
+
+Go to:
+
+```text
+Proxy → Proxy settings
+```
+
+Default proxy:
+
+```text
+127.0.0.1:8080
+```
+
+Configure the browser to use:
+
+```text
+HTTP Proxy:
+127.0.0.1
+
+Port:
+8080
+```
+
+---
+
+# 8. Burp Proxy Workflow
+
+Recommended workflow:
+
+```text
+Browser
+   │
+   ▼
+Burp Proxy
+   │
+   ├── HTTP History
+   │
+   ├── Repeater
+   │
+   ├── Site Map
+   │
+   └── Request/Response
+           │
+           ▼
+      Juice Shop
+```
+
+---
+
+# 9. Capture Initial Request
+
+Open the Juice Shop homepage while Burp Proxy is running.
+
+Go to:
+
+```text
+Proxy → HTTP history
+```
+
+Record:
+
+```text
+Method
+Host
+Port
+Path
+Parameters
+Cookies
+Headers
+Status Code
+Response Length
+Content-Type
+```
+
+Example:
+
+```http
+GET / HTTP/1.1
+Host: 127.0.0.1:3000
+User-Agent: Mozilla/5.0
+Accept: text/html
+```
+
+---
+
+# 10. Build Burp Site Map
+
+Go to:
+
+```text
+Target → Site map
+```
+
+Browse the application normally.
+
+Burp should begin discovering:
+
+```text
+/
+├── assets/
+├── api/
+├── rest/
+├── administration/
+├── login
+├── register
+├── basket
+├── search
+├── profile
+└── other application routes
+```
+
+> The exact routes observed should be taken from your current Juice Shop instance rather than blindly copying a list from another version.
+
+---
+
+# 11. Endpoint Discovery
+
+Endpoint discovery should use multiple sources.
+
+```text
+Browser
+   +
+Burp HTTP History
+   +
+Burp Site Map
+   +
+JavaScript
+   +
+robots.txt
+   +
+sitemap
+   +
+Application behavior
+```
+
+---
+
+# 12. robots.txt
+
+Request:
+
+```bash
+curl -i "$TARGET/robots.txt"
+```
+
+Or:
+
+```bash
+curl "$TARGET/robots.txt"
+```
+
+Save:
+
+```bash
+curl "$TARGET/robots.txt" > robots.txt
+```
+
+Review for:
+
+```text
+Disallowed paths
+Hidden routes
+Application directories
+Administrative paths
+```
+
+---
+
+# 13. sitemap.xml
+
+Check:
+
+```bash
+curl -i "$TARGET/sitemap.xml"
+```
+
+If present:
+
+```bash
+curl "$TARGET/sitemap.xml" > sitemap.xml
+```
+
+Review discovered paths.
+
+---
+
+# 14. security.txt
+
+Check:
+
+```bash
+curl -i "$TARGET/.well-known/security.txt"
+```
+
+Also:
+
+```bash
+curl -i "$TARGET/security.txt"
+```
+
+Record whether the file exists and what information it exposes.
+
+---
+
+# 15. Favicon Fingerprinting
+
+Download favicon:
+
+```bash
+wget "$TARGET/favicon.ico"
+```
+
+Check file:
+
+```bash
+file favicon.ico
+```
+
+Generate hash:
+
+```bash
+md5sum favicon.ico
+```
+
+This can help identify application fingerprints when comparing environments.
+
+---
+
+# 16. JavaScript Reconnaissance
+
+Modern web applications frequently expose useful application information through JavaScript bundles.
+
+Open:
+
+```text
+Browser → Developer Tools → Sources
+```
+
+Look for:
+
+```text
+main.js
+runtime.js
+polyfills.js
+vendor.js
+chunk files
+```
+
+---
+
+# 17. Extract JavaScript Files
+
+Using Burp:
+
+```text
+Target → Site map
+```
+
+Filter:
+
+```text
+.js
+```
+
+Export or inspect JavaScript files.
+
+Using command-line tools:
+
+```bash
+curl -s "$TARGET" | grep -oE 'src="[^"]+\.js[^"]*"'
+```
+
+Extract JavaScript URLs:
+
+```bash
+curl -s "$TARGET" | grep -oE 'src="[^"]+\.js[^"]*"' | sed 's/src="//;s/"$//'
+```
+
+---
+
+# 18. Search JavaScript for Endpoints
+
+Once JavaScript files are downloaded:
+
+```bash
+grep -RniE 'api/|rest/|graphql|login|register|basket|orders|users|products' .
+```
+
+Search for URL-like strings:
+
+```bash
+grep -RnoE '["'\''][^"'\'']*/(api|rest)/[^"'\'']*["'\'']' .
+```
+
+Search for potentially interesting keywords:
+
+```bash
+grep -RniE 'admin|authenticate|authorization|token|password|user|basket|order|upload|feedback' .
+```
+
+> JavaScript findings are reconnaissance leads. They should be verified against actual application requests before being treated as active endpoints.
+
+---
+
+# 19. API Discovery Through Burp
+
+This is one of the most important parts of the Juice Shop reconnaissance phase.
+
+Browse:
+
+```text
+Products
+Search
+Login
+Register
+Basket
+Profile
+Orders
+Reviews
+Feedback
+```
+
+Then inspect:
+
+```text
+Proxy → HTTP history
+```
+
+Filter:
+
+```text
+api
+```
+
+Also inspect:
+
+```text
+rest
+```
+
+Record every relevant request.
+
+---
+
+# 20. API Inventory
+
+Create a table such as:
+
+| Method | Endpoint    | Parameters | Auth   | Purpose            | Evidence   |
+| ------ | ----------- | ---------- | ------ | ------------------ | ---------- |
+| GET    | `/api/...`  | `id`       | No/Yes | Product data       | Screenshot |
+| POST   | `/rest/...` | JSON body  | Yes    | Application action | Screenshot |
+| GET    | `/api/...`  | `q`        | No     | Search             | Screenshot |
+
+Do not mark a vulnerability at this stage.
+
+This table is an **attack-surface inventory**.
+
+---
+
+# 21. API Request Analysis
+
+For each API request, inspect:
+
+### Request
+
+```text
+HTTP method
+URL
+Query parameters
+Headers
+Cookies
+Authorization
+Content-Type
+JSON body
+```
+
+### Response
+
+```text
+Status code
+Content-Type
+Response body
+Returned objects
+User information
+Error messages
+Server headers
+```
+
+Example:
+
+```http
+POST /api/example HTTP/1.1
+Host: 127.0.0.1:3000
+Content-Type: application/json
+Cookie: ...
+
+{
+    "example": "value"
+}
+```
+
+---
+
+# 22. Parameter Discovery
+
+Identify:
+
+### URL parameters
+
+```text
+?id=
+?search=
+?q=
+?item=
+?quantity=
+```
+
+### JSON parameters
+
+```json
+{
+  "email": "...",
+  "password": "...",
+  "id": "...",
+  "quantity": "..."
+}
+```
+
+### Form parameters
+
+```text
+username
+password
+email
+message
+comment
+```
+
+### Headers
+
+```text
+Authorization
+Origin
+Referer
+Content-Type
+Accept
+Cookie
+User-Agent
+```
+
+Record these for later vulnerability testing.
+
+---
+
+# 23. Authentication Surface Mapping
+
+Identify authentication-related requests.
+
+Typical functionality:
+
+```text
+Login
+Registration
+Password reset
+Logout
+Profile
+Session
+Authentication token
+```
+
+Use Burp:
+
+```text
+Proxy → HTTP history
+```
+
+Filter for:
+
+```text
+login
+register
+authenticate
+logout
+password
+token
+```
+
+Record:
+
+```text
+Login endpoint
+HTTP method
+Username/email parameter
+Password parameter
+Authentication token
+Cookie
+Session behavior
+Response code
+```
+
+---
+
+# 24. Cookie Reconnaissance
+
+Inspect:
+
+```http
+Set-Cookie:
+```
+
+Example fields:
+
+```text
+Name
+Value
+Secure
+HttpOnly
+SameSite
+Path
+Domain
+Expires
+```
+
+Use:
+
+```bash
+curl -I "$TARGET"
+```
+
+Look specifically for:
+
+```text
+Set-Cookie
+```
+
+Document cookie security separately during the HTTP Security phase.
+
+---
+
+# 25. CORS Reconnaissance
+
+Inspect:
+
+```text
+Access-Control-Allow-Origin
+Access-Control-Allow-Credentials
+Access-Control-Allow-Methods
+Access-Control-Allow-Headers
+```
+
+Check baseline:
+
+```bash
+curl -i "$TARGET"
+```
+
+For an authorized lab test, inspect behavior with an Origin header:
+
+```bash
+curl -i \
+-H "Origin: https://example.com" \
+"$TARGET"
+```
+
+Record whether the application returns CORS-related headers.
+
+> This is reconnaissance. Do not conclude that CORS is vulnerable solely because a header exists.
+
+---
+
+# 26. HTTP Method Enumeration
+
+Check:
+
+```bash
+curl -i -X OPTIONS "$TARGET"
+```
+
+Review:
+
+```text
+Allow:
+Access-Control-Allow-Methods:
+```
+
+Also observe methods naturally used by the application:
+
+```text
+GET
+POST
+PUT
+PATCH
+DELETE
+OPTIONS
+```
+
+The purpose is to understand the application's HTTP attack surface.
+
+---
+
+# 27. Content-Type Enumeration
+
+Record content types used by endpoints.
+
+Common examples:
+
+```text
+application/json
+text/html
+application/javascript
+application/x-www-form-urlencoded
+multipart/form-data
+```
+
+This is useful for later:
+
+* API testing
+* Input validation
+* XSS testing
+* Request smuggling research
+* HTTP security testing
+
+---
+
+# 28. Interesting Files & Paths
+
+Check common application resources:
+
+```bash
+for path in \
+robots.txt \
+sitemap.xml \
+security.txt \
+.well-known/security.txt \
+favicon.ico \
+manifest.json; do
+    echo "===== $path ====="
+    curl -s -o /dev/null -w "%{http_code} %{size_download}\n" "$TARGET/$path"
+done
+```
+
+Record only resources actually exposed by the target.
+
+---
+
+# 29. Content Discovery
+
+For an authorized lab environment, `ffuf` can be used to discover content.
+
+Example:
+
+```bash
+ffuf \
+-u "$TARGET/FUZZ" \
+-w /usr/share/wordlists/dirb/common.txt \
+-mc 200,204,301,302,307,401,403
+```
+
+For JavaScript-related discovery:
+
+```bash
+ffuf \
+-u "$TARGET/FUZZ" \
+-w /usr/share/wordlists/dirb/common.txt \
+-e .js,.json,.txt
+```
+
+Important:
+
+> Do not assume every discovered path is a vulnerability. Discovery and vulnerability validation are separate activities.
+
+---
+
+# 30. Nuclei – Passive/Controlled Recon
+
+Nuclei may be used for controlled technology and exposure checks:
+
+```bash
+nuclei -u "$TARGET"
+```
+
+For a limited template category:
+
+```bash
+nuclei -u "$TARGET" -tags tech
+```
+
+Record scanner output separately.
+
+Automated results must be manually verified before reporting a finding.
+
+---
+
+# 31. curl Recon Cheat Sheet
+
+### Headers
+
+```bash
+curl -I "$TARGET"
+```
+
+### Full response
+
+```bash
+curl -i "$TARGET"
+```
+
+### Follow redirects
+
+```bash
+curl -i -L "$TARGET"
+```
+
+### OPTIONS
+
+```bash
+curl -i -X OPTIONS "$TARGET"
+```
+
+### Save response
+
+```bash
+curl -s "$TARGET" -o response.html
+```
+
+### Status code
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" "$TARGET"
+```
+
+### Response size
+
+```bash
+curl -s -o /dev/null -w "%{size_download}\n" "$TARGET"
+```
+
+### Timing
+
+```bash
+curl -s -o /dev/null \
+-w "Status: %{http_code}\nTime: %{time_total}s\n" \
+"$TARGET"
+```
+
+---
+
+# 32. Burp Repeater Workflow
+
+Once an interesting request is identified:
+
+```text
+HTTP History
+      ↓
+Right Click
+      ↓
+Send to Repeater
+      ↓
+Modify Request
+      ↓
+Send
+      ↓
+Compare Response
+      ↓
+Record Observation
+```
+
+During reconnaissance, use Repeater primarily to understand:
+
+* Required parameters
+* Optional parameters
+* Response behavior
+* Authentication requirements
+* Status codes
+* Object identifiers
+* API structure
+
+Do not immediately attempt destructive payloads.
+
+---
+
+# 33. Attack-Surface Mapping
+
+Create an attack-surface map.
+
+```text
+                     Juice Shop
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+     Frontend           APIs          Authentication
+        │                │                │
+   Angular Routes    REST/API        Login/Register
+        │                │                │
+   JS Bundles        Parameters      Sessions/Tokens
+        │                │                │
+        └────────────────┼────────────────┘
+                         │
+                  Security Testing
+                         │
+       ┌─────────────────┼─────────────────┐
+       │                 │                 │
+   Injection            XSS              Access
+       │                 │              Control
+       │                 │                 │
+     SQLi              Stored/DOM        IDOR/BOLA
+```
+
+---
+
+# 34. Reconnaissance Findings Table
+
+Use this table throughout the assessment.
+
+| ID    | Observation                        | Type              | Severity | Evidence   | Status    |
+| ----- | ---------------------------------- | ----------------- | -------- | ---------- | --------- |
+| R-001 | Application exposed on HTTP port   | Attack Surface    | Info     | Screenshot | Confirmed |
+| R-002 | Technology stack identified        | Fingerprinting    | Info     | WhatWeb    | Confirmed |
+| R-003 | API endpoint discovered            | Endpoint          | Info     | Burp       | Confirmed |
+| R-004 | Authentication endpoint identified | Attack Surface    | Info     | Burp       | Confirmed |
+| R-005 | JavaScript bundle discovered       | Client-side Asset | Info     | Browser    | Confirmed |
+| R-006 | Interesting parameter identified   | Input Surface     | Info     | Burp       | Confirmed |
+| R-007 | Security-related header observed   | HTTP              | Info     | Response   | Confirmed |
+| R-008 | Public resource discovered         | Information       | Info     | curl       | Confirmed |
+
+> Reconnaissance observations should not automatically be classified as vulnerabilities.
+
+---
+
+# 35. Endpoint Inventory
+
+Maintain a separate endpoint inventory.
+
+| ID    | Method | Endpoint | Auth | Parameter | Content-Type     | Purpose            | Tested |
+| ----- | ------ | -------- | ---- | --------- | ---------------- | ------------------ | ------ |
+| E-001 | GET    | `/`      | No   | —         | text/html        | Homepage           | ✓      |
+| E-002 | GET    | `/...`   | No   | `id`      | JSON             | Data retrieval     | ✓      |
+| E-003 | POST   | `/...`   | Yes  | JSON      | application/json | Application action | ✓      |
+| E-004 | GET    | `/...`   | Yes  | —         | JSON             | User data          | ✓      |
+
+Replace the placeholder endpoints with the actual requests captured from your Juice Shop version.
+
+---
+
+# 36. Parameter Inventory
+
+| ID    | Endpoint | Parameter  | Location | Data Type | Authentication | Future Test    |
+| ----- | -------- | ---------- | -------- | --------- | -------------- | -------------- |
+| P-001 | `/...`   | `id`       | Query    | Integer   | No             | Access Control |
+| P-002 | `/...`   | `search`   | Query    | String    | No             | Injection/XSS  |
+| P-003 | `/...`   | `email`    | JSON     | String    | Yes            | Authentication |
+| P-004 | `/...`   | `quantity` | JSON     | Integer   | Yes            | Business Logic |
+
+---
+
+# 37. Authentication Boundary Map
+
+Document which functions require authentication.
+
+```text
+Public
+│
+├── Homepage
+├── Product browsing
+├── Search
+└── Registration
+        │
+        ▼
+Authenticated User
+│
+├── Basket
+├── Profile
+├── Orders
+├── Reviews
+└── Account functionality
+        │
+        ▼
+Potential Privileged Functions
+│
+└── Administrative functionality
+```
+
+The exact access boundaries should be verified from your current test environment.
+
+---
+
+# 38. Juice Shop-Specific Recon Checklist
+
+## Target
+
+* [ ] Juice Shop started successfully
+* [ ] Target URL documented
+* [ ] Target IP documented where applicable
+* [ ] Port identified
+* [ ] HTTP service identified
+* [ ] Service/version fingerprinted
+
+## Application
+
+* [ ] Homepage mapped
+* [ ] Main routes identified
+* [ ] Login identified
+* [ ] Registration identified
+* [ ] Search identified
+* [ ] Basket identified
+* [ ] Checkout identified
+* [ ] Profile identified
+* [ ] Reviews identified
+* [ ] Feedback functionality identified
+* [ ] Administrative functionality investigated
+
+## API
+
+* [ ] API requests captured
+* [ ] API endpoints documented
+* [ ] HTTP methods documented
+* [ ] Query parameters documented
+* [ ] JSON parameters documented
+* [ ] Authentication requirements documented
+* [ ] API response structures reviewed
+* [ ] Object identifiers identified
+
+## Client-Side
+
+* [ ] JavaScript bundles identified
+* [ ] Routes reviewed
+* [ ] API references searched
+* [ ] Interesting keywords searched
+* [ ] Client-side storage reviewed
+* [ ] Source files reviewed
+
+## HTTP
+
+* [ ] HTTP headers captured
+* [ ] HTTP methods identified
+* [ ] Cookies identified
+* [ ] Content types identified
+* [ ] CORS behavior recorded
+* [ ] Security headers recorded
+* [ ] Redirect behavior recorded
+* [ ] OPTIONS response reviewed
+
+## Public Resources
+
+* [ ] `/robots.txt`
+* [ ] `/sitemap.xml`
+* [ ] `/security.txt`
+* [ ] `/.well-known/security.txt`
+* [ ] `/favicon.ico`
+* [ ] Other exposed resources
+
+## Discovery
+
+* [ ] Burp Site Map populated
+* [ ] Burp HTTP History reviewed
+* [ ] Endpoint inventory created
+* [ ] Parameter inventory created
+* [ ] Authentication boundary mapped
+* [ ] Attack surface diagram created
+
+## Evidence
+
+* [ ] Initial response captured
+* [ ] HTTP headers screenshot
+* [ ] Burp Site Map screenshot
+* [ ] HTTP History screenshot
+* [ ] API request screenshot
+* [ ] API response screenshot
+* [ ] JavaScript evidence captured
+* [ ] Endpoint inventory completed
+* [ ] Findings table updated
+
+---
+
+# 39. Evidence Directory
+
+Recommended structure:
+
+```text
+01-Reconnaissance/
+│
+├── README.md
+│
+├── evidence/
+│   │
+│   ├── 01-target/
+│   │   ├── target-response.txt
+│   │   └── target-screenshot.png
+│   │
+│   ├── 02-nmap/
+│   │   ├── nmap-basic.txt
+│   │   └── nmap-service.txt
+│   │
+│   ├── 03-technology/
+│   │   └── whatweb.txt
+│   │
+│   ├── 04-http/
+│   │   ├── headers.txt
+│   │   └── options.txt
+│   │
+│   ├── 05-burp/
+│   │   ├── site-map.png
+│   │   ├── http-history.png
+│   │   ├── api-request.png
+│   │   └── api-response.png
+│   │
+│   ├── 06-javascript/
+│   │   └── js-analysis.txt
+│   │
+│   └── 07-discovery/
+│       ├── robots.txt
+│       └── sitemap.xml
+│
+├── endpoint-inventory.md
+├── parameter-inventory.md
+└── findings.md
+```
+
+---
+
+# 40. Screenshot Placeholders
+
+Use screenshots as evidence rather than decorative images.
+
+## Screenshot 01 – Target
+
+```markdown
+### Evidence – Target Application
+
+![Target Application](./evidence/01-target/target-screenshot.png)
+```
+
+---
+
+## Screenshot 02 – Nmap
+
+```markdown
+### Evidence – Port & Service Enumeration
+
+![Nmap Results](./evidence/02-nmap/nmap-service.png)
+```
+
+---
+
+## Screenshot 03 – Burp Site Map
+
+```markdown
+### Evidence – Burp Site Map
+
+![Burp Site Map](./evidence/05-burp/site-map.png)
+```
+
+---
+
+## Screenshot 04 – API Request
+
+```markdown
+### Evidence – API Request
+
+![API Request](./evidence/05-burp/api-request.png)
+```
+
+---
+
+## Screenshot 05 – API Response
+
+```markdown
+### Evidence – API Response
+
+![API Response](./evidence/05-burp/api-response.png)
+```
+
+---
+
+# 41. Recon Evidence Template
+
+For every important observation:
+
+````markdown
+## R-XXX – Observation Title
+
+### Observation
+
+Describe what was discovered.
+
+### Source
+
+- Browser
+- Burp Suite
+- curl
+- Nmap
+- WhatWeb
+- JavaScript analysis
+
+### Request
+
+```http
+GET /example HTTP/1.1
+Host: 127.0.0.1:3000
+````
+
+### Response
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+```
+
+### Evidence
+
+![Evidence](./evidence/example.png)
+
+### Security Relevance
+
+Explain why this information is useful for subsequent testing.
+
+### Next Testing Phase
+
+* Authentication
+* Access Control
+* Injection
+* XSS
+* CSRF
+* Business Logic
+* HTTP Security
+
+````
+
+---
+
+# 42. Recon-to-Vulnerability Mapping
+
+Reconnaissance should feed the next phases.
+
+| Recon Observation | Next Phase |
+|---|---|
+| Login endpoint | Authentication |
+| User/object ID | Broken Access Control |
+| Search parameter | Injection / XSS |
+| JSON parameter | Injection / Business Logic |
+| Review functionality | XSS |
+| Basket endpoint | Access Control / Business Logic |
+| Password reset functionality | Authentication |
+| API endpoint | API Security / Access Control |
+| File upload | File handling / Injection |
+| HTTP header | HTTP Security |
+| Verbose response | Information Disclosure / Error Handling |
+| JavaScript route | Client-side testing |
+
+---
+
+# 43. Example Recon Session
+
+A minimal practical session:
+
+```bash
+# 1. Define target
+export TARGET=http://127.0.0.1:3000
+
+# 2. Verify target
+curl -I "$TARGET"
+
+# 3. Fingerprint
+whatweb "$TARGET"
+
+# 4. HTTP methods
+curl -i -X OPTIONS "$TARGET"
+
+# 5. Public resources
+curl -i "$TARGET/robots.txt"
+curl -i "$TARGET/sitemap.xml"
+curl -i "$TARGET/.well-known/security.txt"
+
+# 6. Nmap
+nmap -Pn -sC -sV -p 3000 127.0.0.1
+
+# 7. Content discovery
+ffuf \
+-u "$TARGET/FUZZ" \
+-w /usr/share/wordlists/dirb/common.txt \
+-mc 200,204,301,302,307,401,403
+
+# 8. Nuclei technology check
+nuclei -u "$TARGET" -tags tech
+````
+
+Then move to Burp:
+
+```text
+Browser
+   ↓
+Proxy
+   ↓
+HTTP History
+   ↓
+Site Map
+   ↓
+API discovery
+   ↓
+Parameter inventory
+   ↓
+Authentication mapping
+```
+
+---
+
+# 44. Recon Completion Criteria
+
+Reconnaissance can be considered complete when:
+
+```text
+☑ Target identified
+☑ Port/service identified
+☑ Technology stack identified
+☑ Application functionality mapped
+☑ Burp Site Map populated
+☑ API endpoints inventoried
+☑ Parameters inventoried
+☑ Authentication boundaries mapped
+☑ JavaScript assets reviewed
+☑ HTTP headers documented
+☑ Public resources reviewed
+☑ Evidence captured
+☑ Attack surface documented
+```
+
+---
+
+# 📊 Final Recon Summary
+
+At the end of this phase, maintain a concise summary:
+
+| Category       | Result                            |
+| -------------- | --------------------------------- |
+| Target         | OWASP Juice Shop                  |
+| Environment    | Authorized Lab                    |
+| Web Port       | 3000 / environment-specific       |
+| Frontend       | Angular                           |
+| Backend        | Node.js / Express                 |
+| API            | REST/API endpoints                |
+| Proxy          | Burp Suite                        |
+| Recon Tools    | Nmap, WhatWeb, curl, ffuf, Nuclei |
+| Endpoints      | Documented in inventory           |
+| Parameters     | Documented in inventory           |
+| Authentication | Mapped                            |
+| HTTP Security  | Baseline captured                 |
+| Evidence       | Stored under `evidence/`          |
+| Next Phase     | Information Disclosure            |
+
+---
+
+# ➡️ Next Phase
+
+After reconnaissance, proceed to:
+
+## [02 – Information Disclosure](../02-Information-Disclosure/)
+
+The information collected during reconnaissance should be reused to identify:
+
+* Exposed sensitive information
+* Debug information
+* Interesting API responses
+* Client-side information leakage
+* Exposed files
+* Metadata
+* Credentials/secrets where intentionally exposed by the lab
+* Excessive information returned by APIs
+
+---
+
+# 📚 References
+
+* OWASP Juice Shop: https://owasp.org/www-project-juice-shop/
+* OWASP Juice Shop Official Site: https://owasp-juice.shop/
+* OWASP Juice Shop Companion Guide: https://pwning.owasp-juice.shop/
+* OWASP Web Security Testing Guide: https://owasp.org/www-project-web-security-testing-guide/
+* OWASP API Security Top 10: https://owasp.org/www-project-api-security/
+* Nmap Documentation: https://nmap.org/docs.html
+* Burp Suite Documentation: https://portswigger.net/burp/documentation
+* WhatWeb: https://github.com/urbanadventurer/WhatWeb
+* ffuf: https://github.com/ffuf/ffuf
+* Nuclei: https://github.com/projectdiscovery/nuclei
+
+---
+
+# 👩‍💻 Author
+
+**Bhumika Mishra**
+
+GitHub: [Bhumika02052002](https://github.com/Bhumika02052002)
+
+Project: [OWASP-Juice-Shop-VAPT](https://github.com/Bhumika02052002/OWASP-Juice-Shop-VAPT)
+
+---
+
+> **Note:** This documentation is for authorized testing of OWASP Juice Shop or equivalent intentionally vulnerable laboratory environments. Discovery results should be manually verified before being classified as security vulnerabilities.
