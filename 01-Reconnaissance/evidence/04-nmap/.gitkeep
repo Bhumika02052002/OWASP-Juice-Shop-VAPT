@@ -1,0 +1,242 @@
+NMAP NETWORK / WEB SERVICE SCAN REPORT
+
+Assessment Type : Localhost Web Application Enumeration Target :
+127.0.0.1 (localhost) Target Port : TCP/3000 Service : ppp? Application
+: OWASP Juice Shop Scan Command : nmap -Pn -sC -sV -p 3000 127.0.0.1
+Nmap Version : 7.98 Scan Date/Time : 14 September 2026, approximately
+06:07 (-04:00 shown by Nmap) Assessment Scope : Local test environment
+
+1. EXECUTIVE SUMMARY
+
+An Nmap service/version detection scan was performed against TCP port
+3000 on localhost (127.0.0.1). The host was reachable and port 3000 was
+found open. The service returned content identifying the application as
+OWASP Juice Shop, an intentionally insecure web application used for
+security training.
+
+The scan also exposed several HTTP response headers and application
+metadata. These observations are useful for further web application
+security testing, but the Nmap output alone does not prove an
+exploitable vulnerability.
+
+2. SCAN OBJECTIVE
+
+The objective of this scan was to:
+
+-   Identify whether the target host is reachable.
+-   Identify open TCP ports on the specified port.
+-   Detect the service running on port 3000.
+-   Obtain basic service/version information.
+-   Run Nmap default scripts (-sC) for additional HTTP enumeration.
+-   Collect HTTP response headers and basic application fingerprinting
+    data.
+
+3. TARGET INFORMATION
+
+Target IP : 127.0.0.1 Target Hostname : localhost Port Scanned :
+3000/tcp Port State : OPEN Detected Service: ppp? (service fingerprint
+shown by Nmap) Application : OWASP Juice Shop Host Status : UP Reported
+Latency: 0.00010s
+
+4. COMMAND USED
+
+nmap -Pn -sC -sV -p 3000 127.0.0.1
+
+Option Explanation: -Pn : Treat the host as online and skip host
+discovery. -sC : Run Nmap’s default NSE scripts. -sV : Detect
+service/version information. -p 3000 : Scan only TCP port 3000.
+
+5. KEY SCAN RESULTS
+
+PORT STATE SERVICE 3000/tcp open ppp?
+
+The service on port 3000 responded successfully to HTTP requests.
+
+HTTP GET Request: HTTP/1.1 200 OK
+
+The response body and metadata identified: Application Name : OWASP
+Juice Shop Description : “Probably the most modern and sophisticated
+insecure web application”
+
+This is consistent with a local OWASP Juice Shop training environment.
+
+6. HTTP SECURITY OBSERVATIONS
+
+6.1 Access-Control-Allow-Origin: * Severity: Informational / Requires
+Validation
+
+Observed: Access-Control-Allow-Origin: *
+
+This indicates that the application permits cross-origin requests from
+any origin for the relevant response. This is not automatically a
+vulnerability. Its security impact depends on the endpoints,
+authentication mechanism, credentials configuration, and whether
+sensitive data can be accessed cross-origin.
+
+Recommended validation: - Test authenticated and unauthenticated
+endpoints separately. - Check whether Access-Control-Allow-Credentials
+is enabled. - Determine whether sensitive information is returned to
+arbitrary origins. - Review CORS configuration against the application’s
+actual trust model.
+
+6.2 X-Content-Type-Options: nosniff Status: Positive Security Control
+
+Observed: X-Content-Type-Options: nosniff
+
+This header instructs browsers not to MIME-sniff responses and is
+generally considered a good security configuration.
+
+6.3 X-Frame-Options: SAMEORIGIN Status: Positive Security Control
+
+Observed: X-Frame-Options: SAMEORIGIN
+
+This restricts framing of the application to the same origin and
+provides protection against many clickjacking scenarios.
+
+6.4 Referrer-Policy: no-referrer Status: Positive Security Control
+
+Observed: Referrer-Policy: no-referrer
+
+This reduces leakage of the originating URL through the HTTP Referer
+header.
+
+6.5 Feature-Policy: payment ‘self’ Status: Informational / Legacy Header
+
+Observed: Feature-Policy: payment ‘self’
+
+The response includes a Feature-Policy header controlling the payment
+feature. Modern applications commonly use Permissions-Policy for this
+type of control. The actual browser support and security value should be
+verified.
+
+6.6 Cache-Control Observed: Cache-Control: public, max-age=0
+
+This indicates public caching is permitted while specifying a
+zero-second freshness lifetime. Whether this is appropriate depends on
+the sensitivity of the response.
+
+7. HTTP METHODS OBSERVED
+
+An HTTP OPTIONS request returned:
+
+HTTP/1.1 204 No Content
+
+Access-Control-Allow-Methods: GET, HEAD, PUT, PATCH, POST, DELETE
+
+Security Note: The presence of methods such as PUT, PATCH and DELETE
+does not by itself mean that these operations are exploitable.
+Authorization and endpoint-specific controls must be tested to determine
+whether unauthorized state-changing operations are possible.
+
+Recommended validation: - Enumerate application endpoints. - Test each
+method with an authorized account and an unauthenticated request. -
+Check authorization enforcement on PUT, PATCH and DELETE. - Confirm
+whether CSRF protections are present where applicable.
+
+8. INFORMATION DISCLOSURE
+
+The response exposes application-level information including:
+
+-   OWASP Juice Shop application name.
+-   Application description.
+-   Framework/application response behavior.
+-   HTTP response headers.
+-   Request/response capabilities.
+-   A feature-policy configuration.
+-   An application resource path visible in the fingerprint output.
+
+Severity: Informational
+
+Impact: Exposed technology and application metadata can assist
+reconnaissance. However, the information alone is not sufficient to
+establish a security vulnerability.
+
+9. SECURITY HEADERS SUMMARY
+
+Header / Observation Assessment
+
+Access-Control-Allow-Origin: * Requires CORS validation
+X-Content-Type-Options: nosniff Good security control X-Frame-Options:
+SAMEORIGIN Good security control Referrer-Policy: no-referrer Good
+security control Feature-Policy: payment ‘self’ Review / legacy
+configuration Cache-Control: public, max-age=0 Context dependent Allowed
+Methods: GET,HEAD,PUT, PATCH,POST,DELETE Requires authorization testing
+
+10. RISK ASSESSMENT
+
+Based strictly on the supplied Nmap output:
+
+Confirmed open service: - TCP/3000 is accessible on localhost.
+
+Confirmed application identification: - OWASP Juice Shop.
+
+Potential areas requiring further testing: - CORS configuration. -
+Authorization of PUT/PATCH/DELETE methods. - Sensitive information
+exposure. - HTTP security header configuration. - Application-specific
+OWASP Top 10 vulnerabilities.
+
+No critical/high vulnerability should be claimed from this Nmap scan
+alone. Further manual testing with tools such as Burp Suite is required
+to establish exploitability and business impact.
+
+11. RECOMMENDED NEXT STEPS
+
+1.  Open the application at: http://127.0.0.1:3000
+
+2.  Configure Burp Suite as an intercepting proxy.
+
+3.  Browse the application and capture:
+
+    -   GET requests
+    -   POST requests
+    -   PUT/PATCH requests
+    -   DELETE requests
+    -   API requests
+    -   Authentication/session requests
+
+4.  Perform endpoint discovery and identify parameters.
+
+5.  Test OWASP Top 10 areas within the authorized local lab, especially:
+
+    -   Broken Access Control
+    -   Injection
+    -   Security Misconfiguration
+    -   Identification and Authentication Failures
+    -   Cryptographic Failures
+    -   Cross-Site Scripting (XSS)
+    -   CSRF
+    -   Business Logic flaws
+
+6.  Validate CORS behavior using controlled Origin headers.
+
+7.  Test authorization separately for different users/roles.
+
+8.  Document every confirmed finding with:
+
+    -   Title
+    -   Severity
+    -   Affected endpoint
+    -   Description
+    -   Steps to reproduce
+    -   Request/response evidence
+    -   Impact
+    -   Remediation
+
+9.  CONCLUSION
+
+    The Nmap scan successfully identified an active HTTP service on TCP
+    port 3000 running an OWASP Juice Shop instance on localhost. The
+    scan provided useful reconnaissance information and highlighted
+    several areas for deeper web application testing.
+
+The most important point is that Nmap is primarily an enumeration and
+service-discovery tool in this scan. Header observations such as
+Access-Control-Allow-Origin: * and the availability of multiple HTTP
+methods should be treated as leads for manual validation rather than
+automatically classified as vulnerabilities.
+
+Assessment Result: Host Reachable : YES Port 3000 Open : YES Web
+Application Found : YES OWASP Juice Shop : YES Critical Vulnerability
+Confirmed by Nmap : NO Further Testing : RECOMMENDED
+
+END OF REPORT
