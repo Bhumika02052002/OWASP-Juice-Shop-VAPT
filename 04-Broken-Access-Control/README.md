@@ -138,9 +138,9 @@ Does it belong to logged-in user?
 
 **Key point:** Never rely on the frontend to enforce access control. Authorization must be checked **server-side for every object/request**.
 
-Rating Manipulation
+## 3.Rating Manipulation
 
-Goal
+###Goal
 
 Test whether the feedback API allows a user to manipulate the rating value by modifying the request in Burp Suite.
 
