@@ -1,4 +1,4 @@
-# Database Schema – SQL Injection
+#1. Database Schema – SQL Injection
 
 **Category:** Injection
 **Goal:** Exfiltrate the complete database schema using SQL Injection.
