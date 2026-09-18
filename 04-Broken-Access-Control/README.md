@@ -19,7 +19,7 @@ Developer Tools → Sources
 Search JavaScript files for:
 
 ```text
-administration
+admin
 ```
 
 You can also use:
@@ -31,7 +31,7 @@ Ctrl + Shift + F
 You should find the hidden route:
 
 ```text
-/#/administration
+/#/admin
 ```
 
 ### Step 2 — Open the Route
@@ -39,7 +39,7 @@ You should find the hidden route:
 Navigate to:
 
 ```text
-http://localhost:3000/#/administration
+http://localhost:3000/#/admin
 ```
 
 ### Impact
